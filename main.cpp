@@ -1,5 +1,8 @@
 #include <iostream>
 #include <vector>
+#include <fstream>
+#include <string>
+
 
 using namespace std;
 
@@ -76,6 +79,24 @@ class Universo{
 
 };
 
+//se separan los elementos por coma y se guardan en un vector que se retorna
+vector<string> splitItems(string str){
+    string tmp = "";
+    vector<string> elements;
+    
+    for(int i=0; i< str.size();i++){
+        if(str[i] != ','){
+            tmp+=str[i];
+        }else{
+            elements.push_back(tmp);
+            tmp = "";
+        }
+    }
+    elements.push_back(tmp);
+
+    return elements;
+}
+
 int main() {
   Registro reg1 ("M", "Estrato 1", 70);
   Registro reg2 ("M", "Estrato 2", 70);
@@ -101,6 +122,31 @@ int main() {
   prueba.addCluster(clus2);
   prueba.addCluster(clus3);
   prueba.test();
+
+  vector<string> elements;
+  vector<string> inputData;
+  string line;
+  string tmp;
+  
+  ifstream myfile ("prueba.csv");
+  if(myfile.is_open()){
+      while (getline(myfile,line))
+      {
+          inputData.push_back(line);
+          //cout<<line<<endl;
+      }
+      myfile.close();
+  }
+  
+  cout <<inputData[1]<<endl;
+  elements = splitItems(inputData[1]);
+  
+  for (int i = 0; i < elements.size(); i++)
+  {    
+      /* code */
+      cout<<elements[i]<<endl;
+  }
+   
 
   //double distancia = distance(prueba.grupos[0].partes[1], prueba.grupos[0].mode);
   //printf("%.7lf\n",distance(prueba.grupos[0].partes[0], prueba.grupos[0].mode));
