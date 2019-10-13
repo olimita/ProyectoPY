@@ -282,4 +282,12 @@ int main() {
     }
     prueba = procesar(prueba);
   }
+
+  for(int i=0;i<prueba.grupos.size();i++){
+    for(int j=0; j<prueba.grupos[i].partes.size();j++){
+      stringstream ss;
+      ss << i;
+      prueba.grupos[i].partes[j].atributos.push_back(ss.str());
+    }
+  }
 }
