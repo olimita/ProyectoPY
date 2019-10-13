@@ -2,29 +2,44 @@
 #include <vector>
 #include <fstream>
 #include <string>
+#include <stdlib.h>
+#include <time.h>
+#include <bits/stdc++.h> 
+
+#define KCLUSTERS 8
+#define ITERATIONS 10
 
 
 using namespace std;
 
 class Registro {       // The class
   public:             // Access specifier
-    string atributos[2];        // Attribute (int variable)
+    vector<string> atributos;        // Attribute (int variable)
     //string Estrato;  // Attribute (string variable)
-    int Puntaje;
     Registro(){
 
     };
-    Registro (string x, string y, int z) {
-      atributos[0] = x;
-      atributos[1] = y;
-      Puntaje = z;
+    Registro (vector<string> x) {
+      for(int i = 0;i<x.size(); i++){
+          atributos.push_back(x[i]);
+      }
     };
+
+    void set(vector<string> x) {
+      for(int i = 0;i<x.size(); i++){
+          atributos[i] = x[i];
+      }
+    };
+    void clean(){
+      atributos.clear();
+    }
 };
 
 class Cluster{
   public:
     vector<Registro> partes;
     Registro mode;
+    Registro oldMode;
     Cluster (){
       mode = Registro();
     };
@@ -33,38 +48,75 @@ class Cluster{
       partes.push_back(r);
     }
 
-    void newMode(Registro r){
+    void setMode(Registro r){
       mode = r;
+    }
+    void setOldMode(Registro r){
+      oldMode = r;
+    }
+
+    void newMode(){
+      vector<string> opciones[mode.atributos.size()];
+      vector<int> cantidades[mode.atributos.size()];
+      vector<string> nuevaModa;
+      for(int i =0; i<mode.atributos.size();i++){
+        for(int j =0; j < partes.size();j++){
+          string actual = partes[j].atributos[i];
+          vector<string>::iterator itr = find(opciones[i].begin(), opciones[i].end(), actual);
+	        if (itr != opciones[i].end()) {
+            int lugar = distance(opciones[i].begin(), itr);
+            cantidades[i][lugar] +=1;
+	        }
+	        else {           
+		        cantidades[i].push_back(1);
+            opciones[i].push_back(actual);
+	        }
+        }
+      }
+      for(int i =0; i<mode.atributos.size();i++){
+        int selected = *max_element(cantidades[i].begin(), cantidades[i].end());
+        vector<int>::iterator selected2 = find(cantidades[i].begin(),cantidades[i].end(),selected);
+        int selected3 = distance(cantidades[i].begin(), selected2);
+        nuevaModa.push_back(opciones[i].at(selected3));
+      }
+      oldMode = mode;
+      mode.set(nuevaModa);
     };
 
 };
 
-double distance(Registro primero, Registro segundo){
+double distancia(Registro primero, Registro segundo){
   double coincidencias = 0; 
-  for(int i = 0; i<2;i++ ){
+  for(int i = 0; i<primero.atributos.size();i++ ){
     if(primero.atributos[i] == segundo.atributos[i]){
       coincidencias += 1;
     }
   }
-  return coincidencias/2;
+  return coincidencias/primero.atributos.size();
 }
 
 class Universo{
   public:
     vector<Cluster> grupos;
+    int unidades;
 
     Universo(){
+      unidades = 0;
     }
     
     void addCluster(Cluster c){
       grupos.push_back(c);
     }
 
+    int size(){
+      return grupos.size();
+    }
+
     void test(){
       for(int i =0 ; i < grupos.size();i++){
         for(int j =0; j < grupos[i].partes.size();j++){
           for(int k =0; k < grupos.size();k++){
-            double coind =distance(grupos[i].partes[j], grupos[k].mode);
+            double coind =distancia(grupos[i].partes[j], grupos[k].mode);
             cout << coind ;
             cout << "   " << "Cluster ";
             cout << i;
@@ -82,14 +134,29 @@ class Universo{
 //se separan los elementos por coma y se guardan en un vector que se retorna
 vector<string> splitItems(string str){
     string tmp = "";
+    bool inString = false;
     vector<string> elements;
     
     for(int i=0; i< str.size();i++){
-        if(str[i] != ','){
+        if(str[i] == '\"' && !inString){
             tmp+=str[i];
-        }else{
+            inString = true;
+        
+        }else if(str[i] != '\"' && inString){
+            tmp+=str[i];
+        }else if(str[i] == '\"' && inString){
+            inString =false;
+            tmp+=str[i];
             elements.push_back(tmp);
             tmp = "";
+        }
+        else if(str[i] != ',' && !inString){
+            tmp+=str[i];
+        }else{
+            if(tmp !=""){
+                elements.push_back(tmp);
+                tmp = "";
+            }
         }
     }
     elements.push_back(tmp);
@@ -97,59 +164,122 @@ vector<string> splitItems(string str){
     return elements;
 }
 
+Universo inicializar(vector<string> inputData, int k){
+  Universo resultado;
+  Cluster aux;
+  vector<string> elements;
+  vector<double> diferencias;
+  int iSecret;
+  for(int i = 0; i<k;i++){
+    resultado.addCluster(aux);
+  }
+  
+  for(int i =0;i<31;i++){
+    elements.push_back("10010");
+  }
+
+  Registro aux2(elements);
+  Registro aux3(elements);
+
+  for(int i = 0; i < k;i++){
+    iSecret = (rand() % inputData.size()) + 1;
+    //cout<<iSecret<<endl;
+    elements = splitItems(inputData[iSecret]);
+    aux2.set(elements);
+    resultado.grupos[i].setMode(aux2);
+    resultado.grupos[i].setOldMode(aux3);
+  }
+
+  for(int i = 1;i < inputData.size();i++){
+    elements = splitItems(inputData[i]);
+    aux2.set(elements);
+    for(int j = 0; j<k;j++){
+      double diff = distancia(aux2, resultado.grupos[j].mode);
+      diferencias.push_back(diff);
+    }
+    double selected = *min_element(diferencias.begin(), diferencias.end());
+    vector<double>::iterator selected2 = find(diferencias.begin(),diferencias.end(),selected);
+    int selected3 = distance(diferencias.begin(), selected2);
+    //cout<<selected<<endl<<selected3<<endl;
+    resultado.grupos[selected3].asignar(aux2);
+    resultado.unidades += 1;
+    diferencias.clear();
+  }
+
+  return resultado;
+}
+
+bool isFinished(Universo u){
+  for(int i =0 ;i<u.grupos.size();i++){
+    if(distancia(u.grupos[i].mode, u.grupos[i].oldMode) != 0) return false;
+  }
+  return true;
+}
+
+Universo procesar(Universo u){
+  Universo temp;
+  vector<string> elements;
+  vector<double> diferencias;
+  Cluster aux;
+  for(int i =0;i<31;i++){
+    elements.push_back("1");
+  }
+  Registro aux2(elements);
+  for(int i = 0; i<u.grupos.size();i++){
+    temp.addCluster(aux);
+    temp.grupos[i].setMode(aux2);
+    temp.grupos[i].setOldMode(aux2);
+  }
+  cout<<"creo temporal"<<endl;
+  for(int i=0;i<u.grupos.size();i++){
+    for(int j=0; j<u.grupos[i].partes.size();j++){
+      for(int k = 0; k<u.grupos.size();k++){
+        double diff = distancia(u.grupos[k].mode, u.grupos[i].partes[j]);
+        diferencias.push_back(diff);
+      }
+      double selected = *min_element(diferencias.begin(), diferencias.end());
+      vector<double>::iterator selected2 = find(diferencias.begin(),diferencias.end(),selected);
+      int selected3 = distance(diferencias.begin(), selected2);
+      temp.grupos[selected3].asignar(u.grupos[i].partes[j]);
+      temp.unidades += 1;
+      diferencias.clear();
+    }
+  }
+
+  return temp;
+}
+
 int main() {
-  Registro reg1 ("M", "Estrato 1", 70);
-  Registro reg2 ("M", "Estrato 2", 70);
-  Cluster clus1;
-  clus1.asignar(reg1);
-  clus1.asignar(reg2);
-  clus1.newMode(reg1);
-  Registro reg3 ("M", "Estrato 1", 70);
-  Registro reg4 ("F", "Estrato 1", 70);
-  Cluster clus2;
-  clus2.asignar(reg3);
-  clus2.asignar(reg4);
-  clus2.newMode(reg3);
-  Registro reg5 ("F", "Estrato 2", 70);
-  Registro reg6 ("F", "Estrato 1", 70);
-  Cluster clus3;
-  clus3.asignar(reg5);
-  clus3.asignar(reg6);
-  clus3.newMode(reg5);
-
-  Universo prueba;
-  prueba.addCluster(clus1);
-  prueba.addCluster(clus2);
-  prueba.addCluster(clus3);
-  prueba.test();
-
+  int kModes = 8;
   vector<string> elements;
   vector<string> inputData;
   string line;
   string tmp;
-  
-  ifstream myfile ("prueba.csv");
+  Cluster aux;
+  srand (time(NULL));
+
+  for(int i =0;i<31;i++){
+    elements.push_back("10010");
+  }
+  Registro reg (elements);
+
+  ifstream myfile ("Saber_prueba.csv");
   if(myfile.is_open()){
       while (getline(myfile,line))
       {
           inputData.push_back(line);
-          //cout<<line<<endl;
       }
       myfile.close();
   }
-  
-  cout <<inputData[1]<<endl;
-  elements = splitItems(inputData[1]);
-  
-  for (int i = 0; i < elements.size(); i++)
-  {    
-      /* code */
-      cout<<elements[i]<<endl;
-  }
-   
 
-  //double distancia = distance(prueba.grupos[0].partes[1], prueba.grupos[0].mode);
-  //printf("%.7lf\n",distance(prueba.grupos[0].partes[0], prueba.grupos[0].mode));
-  //printf("%.7lf\n",distancia);
-  cout << "Hello World!\n";
+  Universo prueba;
+
+  prueba = inicializar(inputData, KCLUSTERS);
+
+  for(int i =0;i<ITERATIONS;i++){
+    for(int j = 0;j<prueba.grupos.size();j++){
+      prueba.grupos[j].newMode();
+    }
+    prueba = procesar(prueba);
+  }
 }
